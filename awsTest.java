@@ -146,7 +146,18 @@ public class awsTest {
 					listImages();
 					break;
 				case 9:
+					System.out.print("Enter instance id: ");
+					if (id_string.hasNext()) {
+						instance_id = id_string.nextLine();
+					}
+
+					if (!instance_id.trim().isEmpty()) {
+						condor_status(instance_id);
+					} else {
+						System.out.println("Instance ID cannot be empty.");
+					}
 					break;
+
 				case 99:
 					System.out.println("bye!");
 					menu.close();
@@ -333,6 +344,7 @@ public class awsTest {
 		DescribeImagesRequest request = new DescribeImagesRequest();
 		ProfileCredentialsProvider credentialsProvider = new ProfileCredentialsProvider();
 
+		request.getFilters().add(new Filter().withName("name").withValues("aws-htcondor-slave"));
 		request.setRequestCredentialsProvider(credentialsProvider);
 
 		DescribeImagesResult results = ec2.describeImages(request);
@@ -344,13 +356,63 @@ public class awsTest {
 
 	}
 
+	public static void condor_status(String instance_id) {
+		System.out.printf("Checking HTCondor status for instance %s...\n", instance_id);
 		try {
+			// 1. instance_id로 EC2 퍼블릭 IP 주소 가져오기
+			String publicIp = getPublicIp(instance_id);
+			if (publicIp == null || publicIp.isEmpty()) {
+				System.out.println("Could not retrieve the public IP for the instance.");
+				return;
+			}
+
+			// 2. SSH 명령어 구성
+			String privateKeyPath = "/home/cloud/cloud-test.pem"; // PEM 파일 경로
+			String user = "ec2-user";
+			String command = String.format("ssh -i %s %s@%s condor_status", privateKeyPath, user, publicIp);
+
+			// 3. ProcessBuilder를 사용해 명령어 실행
+			ProcessBuilder processBuilder = new ProcessBuilder("bash", "-c", command);
+			Process process = processBuilder.start();
+
+			// 4. 프로세스 출력 읽기
 			Scanner scanner = new Scanner(process.getInputStream());
 			while (scanner.hasNextLine()) {
 				System.out.println(scanner.nextLine());
 			}
+
+			// 5. 프로세스 종료 코드 확인
+			int exitCode = process.waitFor();
+			if (exitCode == 0) {
+				System.out.printf("HTCondor status for instance %s checked successfully.\n", instance_id);
+			} else {
+				System.out.printf("Error while checking HTCondor status for instance %s. Exit code: %d\n", instance_id, exitCode);
+			}
 		} catch (Exception e) {
+			System.out.println("Exception occurred: " + e.getMessage());
 		}
 	}
+
+	private static String getPublicIp(String instance_id) {
+		try {
+			// EC2 인스턴스 정보 요청
+			DescribeInstancesRequest request = new DescribeInstancesRequest().withInstanceIds(instance_id);
+			DescribeInstancesResult response = ec2.describeInstances(request);
+
+			// 퍼블릭 IP 주소 추출
+			for (Reservation reservation : response.getReservations()) {
+				for (Instance instance : reservation.getInstances()) {
+					if (instance.getInstanceId().equals(instance_id)) {
+						return instance.getPublicIpAddress();
+					}
+				}
+			}
+		} catch (Exception e) {
+			System.out.println("Error retrieving public IP: " + e.getMessage());
+		}
+		return null; // 퍼블릭 IP가 없거나 요청 실패 시 null 반환
+	}
+
+
 }
 	
