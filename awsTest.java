@@ -234,33 +234,48 @@ public class awsTest {
 
 		DescribeInstancesRequest request = new DescribeInstancesRequest();
 
-		while(!done) {
+		while (!done) {
 			DescribeInstancesResult response = ec2.describeInstances(request);
 
-			for(Reservation reservation : response.getReservations()) {
-				for(Instance instance : reservation.getInstances()) {
+			for (Reservation reservation : response.getReservations()) {
+				for (Instance instance : reservation.getInstances()) {
+					// 태그에서 Name 값 추출
+					String name = "N/A";
+					if (instance.getTags() != null) {
+						for (Tag tag : instance.getTags()) {
+							if ("Name".equals(tag.getKey())) {
+								name = tag.getValue();
+								break;
+							}
+						}
+					}
+
+					// Name 태그를 가장 앞에 출력
 					System.out.printf(
-							"[id] %s, " +
+							"[Name] %s, " +
+									"[id] %s, " +
 									"[AMI] %s, " +
 									"[type] %s, " +
 									"[state] %10s, " +
-									"[monitoring state] %s",
+									"[monitoring state] %s\n",
+							name,
 							instance.getInstanceId(),
 							instance.getImageId(),
 							instance.getInstanceType(),
 							instance.getState().getName(),
-							instance.getMonitoring().getState());
+							instance.getMonitoring().getState()
+					);
 				}
-				System.out.println();
 			}
 
 			request.setNextToken(response.getNextToken());
 
-			if(response.getNextToken() == null) {
+			if (response.getNextToken() == null) {
 				done = true;
 			}
 		}
 	}
+
 
 	public static void availableZones()	{
 
