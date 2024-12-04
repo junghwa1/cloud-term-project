@@ -117,14 +117,19 @@ public class awsTest {
 					break;
 
 				case 6:
-					System.out.print("Enter ami id: ");
-					String ami_id = "";
-					if(id_string.hasNext())
-						ami_id = id_string.nextLine();
+					System.out.print("Enter AMI ID: ");
+					String amiId = id_string.nextLine();
 
-					if(!ami_id.trim().isEmpty())
-						createInstance(ami_id);
+					System.out.print("Enter instance name: ");
+					String instanceName = id_string.nextLine();
+
+					if (!amiId.trim().isEmpty() && !instanceName.trim().isEmpty()) {
+						createInstance(amiId, instanceName);
+					} else {
+						System.out.println("AMI ID and Instance Name cannot be empty.");
+					}
 					break;
+
 
 				case 7:
 					System.out.print("Enter instance id: ");
@@ -366,24 +371,38 @@ public class awsTest {
 
 	}
 
-	public static void createInstance(String ami_id) {
-		final AmazonEC2 ec2 = AmazonEC2ClientBuilder.defaultClient();
+	public static void createInstance(String amiId, String instanceName) {
+		System.out.printf("Creating instance with AMI ID %s and Name %s...\n", amiId, instanceName);
 
-		RunInstancesRequest run_request = new RunInstancesRequest()
-				.withImageId(ami_id)
-				.withInstanceType(InstanceType.T2Micro)
-				.withMaxCount(1)
-				.withMinCount(1);
+		try {
+			// 인스턴스 생성 요청
+			RunInstancesRequest runRequest = new RunInstancesRequest()
+					.withImageId(amiId)
+					.withInstanceType(InstanceType.T2Micro) // 인스턴스 타입 설정
+					.withMinCount(1)
+					.withMaxCount(1);
 
-		RunInstancesResult run_response = ec2.runInstances(run_request);
+			RunInstancesResult runResponse = ec2.runInstances(runRequest);
 
-		String reservation_id = run_response.getReservation().getInstances().get(0).getInstanceId();
+			// 생성된 인스턴스 ID 가져오기
+			String instanceId = runResponse.getReservation().getInstances().get(0).getInstanceId();
+			System.out.printf("Instance created with ID: %s\n", instanceId);
 
-		System.out.printf(
-				"Successfully started EC2 instance %s based on AMI %s",
-				reservation_id, ami_id);
+			// 태그 추가 요청
+			CreateTagsRequest tagRequest = new CreateTagsRequest()
+					.withResources(instanceId)
+					.withTags(new Tag().withKey("Name").withValue(instanceName));
 
+			ec2.createTags(tagRequest);
+
+			System.out.printf("Instance %s tagged with Name: %s\n", instanceId, instanceName);
+		} catch (AmazonServiceException e) {
+			System.out.printf("AmazonServiceException: %s\n", e.getMessage());
+		} catch (Exception e) {
+			System.out.printf("Exception: %s\n", e.getMessage());
+		}
 	}
+
 
 	public static void rebootInstance(String instance_id) {
 
