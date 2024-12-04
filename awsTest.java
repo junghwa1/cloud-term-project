@@ -66,11 +66,15 @@ public class awsTest {
 			System.out.println("  1. list instance                2. available zones        ");
 			System.out.println("  3. start instance               4. available regions      ");
 			System.out.println("  5. stop instance                6. create instance        ");
-			System.out.println("  7. reboot instance              8. list images            ");
-			System.out.println("  9. condor status               10. monitor And Manage Resources");
-			System.out.println(" 11. create snapshot             12. list snapshots         ");
-			System.out.println(" 13. delete snapshot             14. copy snapshot          ");
+			System.out.println("  7. reboot instance              8. terminate instance     ");
+			System.out.println("  9. list images                 10. condor status          ");
+			System.out.println(" 11. monitor & Manage Resources  12. create snapshot        ");
+			System.out.println(" 13. list snapshots              14. delete snapshot        ");
+			System.out.println(" 15. copy snapshot               16. create security group  ");
+			System.out.println(" 17. list security groups        18. delete security group  ");
+			System.out.println(" 19. add inbound rule            20. remove inbound rule    ");
 			System.out.println("                                 99. quit                   ");
+
 			System.out.println("------------------------------------------------------------");
 
 			System.out.print("Enter an integer: ");
@@ -139,11 +143,21 @@ public class awsTest {
 					if(!instance_id.trim().isEmpty())
 						rebootInstance(instance_id);
 					break;
-
 				case 8:
+					System.out.print("Enter instance ID to terminate: ");
+					String instanceIdToTerminate = id_string.nextLine();
+
+					if (!instanceIdToTerminate.trim().isEmpty()) {
+						terminateInstance(instanceIdToTerminate);
+					} else {
+						System.out.println("Instance ID cannot be empty.");
+					}
+					break;
+
+				case 9:
 					listImages();
 					break;
-				case 9:
+				case 10:
 					System.out.print("Enter instance id: ");
 					if (id_string.hasNext()) {
 						instance_id = id_string.nextLine();
@@ -155,7 +169,7 @@ public class awsTest {
 						System.out.println("Instance ID cannot be empty.");
 					}
 					break;
-				case 10:
+				case 11:
 					System.out.print("Enter instance id to monitor: ");
 					if (id_string.hasNext()) {
 						instance_id = id_string.nextLine();
@@ -177,7 +191,7 @@ public class awsTest {
 						System.out.println("Instance ID cannot be empty.");
 					}
 					break;
-				case 11:
+				case 12:
 					System.out.print("Enter instance id to create snapshot for: ");
 					if (id_string.hasNext()) {
 						instance_id = id_string.nextLine();
@@ -189,10 +203,10 @@ public class awsTest {
 						System.out.println("Instance ID cannot be empty.");
 					}
 					break;
-				case 12:
+				case 13:
 					listSnapshots();
 					break;
-				case 13:
+				case 14:
 					System.out.print("Enter snapshot ID to delete: ");
 					String snapshotId = id_string.nextLine();
 					if (!snapshotId.trim().isEmpty()) {
@@ -201,7 +215,7 @@ public class awsTest {
 						System.out.println("Snapshot ID cannot be empty.");
 					}
 					break;
-				case 14:
+				case 15:
 					System.out.print("Enter source snapshot ID: ");
 					String sourceSnapshotId = id_string.nextLine();
 
@@ -216,6 +230,49 @@ public class awsTest {
 					} else {
 						System.out.println("All fields are required.");
 					}
+					break;
+				case 16:
+					System.out.print("Enter security group name: ");
+					String groupName = id_string.nextLine();
+					System.out.print("Enter description: ");
+					String description = id_string.nextLine();
+					createSecurityGroup(groupName, description);
+					break;
+
+				case 17:
+					listSecurityGroups();
+					break;
+
+				case 18:
+					System.out.print("Enter security group ID to delete: ");
+					String groupIdToDelete = id_string.nextLine();
+					deleteSecurityGroup(groupIdToDelete);
+					break;
+
+				case 19:
+					System.out.print("Enter security group ID: ");
+					String groupIdForRule = id_string.nextLine();
+					System.out.print("Enter protocol (e.g., tcp): ");
+					String protocol = id_string.nextLine();
+					System.out.print("Enter port: ");
+					int port = menu.nextInt();
+					menu.nextLine(); // consume newline
+					System.out.print("Enter CIDR (e.g., 0.0.0.0/0): ");
+					String cidr = id_string.nextLine();
+					addInboundRule(groupIdForRule, protocol, port, cidr);
+					break;
+
+				case 20:
+					System.out.print("Enter security group ID: ");
+					String groupIdToRemoveRule = id_string.nextLine();
+					System.out.print("Enter protocol (e.g., tcp): ");
+					String protocolToRemove = id_string.nextLine();
+					System.out.print("Enter port: ");
+					int portToRemove = menu.nextInt();
+					menu.nextLine(); // consume newline
+					System.out.print("Enter CIDR (e.g., 0.0.0.0/0): ");
+					String cidrToRemove = id_string.nextLine();
+					removeInboundRule(groupIdToRemoveRule, protocolToRemove, portToRemove, cidrToRemove);
 					break;
 
 
@@ -426,6 +483,29 @@ public class awsTest {
 
 
 	}
+
+	public static void terminateInstance(String instanceId) {
+		System.out.printf("Terminating instance %s...\n", instanceId);
+
+		try {
+			TerminateInstancesRequest request = new TerminateInstancesRequest()
+					.withInstanceIds(instanceId);
+
+			TerminateInstancesResult result = ec2.terminateInstances(request);
+
+			for (InstanceStateChange stateChange : result.getTerminatingInstances()) {
+				System.out.printf("Instance ID: %s, Previous State: %s, Current State: %s\n",
+						stateChange.getInstanceId(),
+						stateChange.getPreviousState().getName(),
+						stateChange.getCurrentState().getName());
+			}
+		} catch (AmazonServiceException e) {
+			System.out.printf("Error terminating instance: %s\n", e.getMessage());
+		} catch (Exception e) {
+			System.out.printf("Exception: %s\n", e.getMessage());
+		}
+	}
+
 
 	public static void listImages() {
 		System.out.println("Listing images....");
@@ -652,6 +732,85 @@ public class awsTest {
 			System.out.printf("Exception: %s\n", e.getMessage());
 		}
 	}
+	public static void createSecurityGroup(String groupName, String description) {
+		System.out.printf("Creating security group %s...\n", groupName);
+		try {
+			CreateSecurityGroupRequest request = new CreateSecurityGroupRequest()
+					.withGroupName(groupName)
+					.withDescription(description);
+			CreateSecurityGroupResult result = ec2.createSecurityGroup(request);
 
+			System.out.printf("Security group created with ID: %s\n", result.getGroupId());
+		} catch (AmazonServiceException e) {
+			System.out.printf("Error creating security group: %s\n", e.getMessage());
+		}
+	}
+	public static void listSecurityGroups() {
+		System.out.println("Listing security groups...");
+		try {
+			DescribeSecurityGroupsResult result = ec2.describeSecurityGroups();
+
+			for (SecurityGroup group : result.getSecurityGroups()) {
+				System.out.printf("Group Name: %s, Group ID: %s, Description: %s, VPC ID: %s\n",
+						group.getGroupName(),
+						group.getGroupId(),
+						group.getDescription(),
+						group.getVpcId());
+			}
+		} catch (AmazonServiceException e) {
+			System.out.printf("Error listing security groups: %s\n", e.getMessage());
+		}
+	}
+	public static void deleteSecurityGroup(String groupId) {
+		System.out.printf("Deleting security group %s...\n", groupId);
+		try {
+			DeleteSecurityGroupRequest request = new DeleteSecurityGroupRequest()
+					.withGroupId(groupId);
+			ec2.deleteSecurityGroup(request);
+
+			System.out.printf("Security group %s successfully deleted.\n", groupId);
+		} catch (AmazonServiceException e) {
+			System.out.printf("Error deleting security group: %s\n", e.getMessage());
+		}
+	}
+	public static void addInboundRule(String groupId, String protocol, int port, String cidr) {
+		System.out.printf("Adding inbound rule to security group %s...\n", groupId);
+		try {
+			IpPermission ipPermission = new IpPermission()
+					.withIpProtocol(protocol)
+					.withFromPort(port)
+					.withToPort(port)
+					.withIpv4Ranges(new IpRange().withCidrIp(cidr)); // 최신 AWS SDK에서 지원되는 방식
+
+
+			AuthorizeSecurityGroupIngressRequest request = new AuthorizeSecurityGroupIngressRequest()
+					.withGroupId(groupId)
+					.withIpPermissions(ipPermission);
+
+			ec2.authorizeSecurityGroupIngress(request);
+			System.out.printf("Inbound rule added: protocol=%s, port=%d, cidr=%s\n", protocol, port, cidr);
+		} catch (AmazonServiceException e) {
+			System.out.printf("Error adding inbound rule: %s\n", e.getMessage());
+		}
+	}
+	public static void removeInboundRule(String groupId, String protocol, int port, String cidr) {
+		System.out.printf("Removing inbound rule from security group %s...\n", groupId);
+		try {
+			IpPermission ipPermission = new IpPermission()
+					.withIpProtocol(protocol)
+					.withFromPort(port)
+					.withToPort(port)
+					.withIpv4Ranges(new IpRange().withCidrIp(cidr)); // 최신 AWS SDK에서 지원되는 방식
+
+			RevokeSecurityGroupIngressRequest request = new RevokeSecurityGroupIngressRequest()
+					.withGroupId(groupId)
+					.withIpPermissions(ipPermission);
+
+			ec2.revokeSecurityGroupIngress(request);
+			System.out.printf("Inbound rule removed: protocol=%s, port=%d, cidr=%s\n", protocol, port, cidr);
+		} catch (AmazonServiceException e) {
+			System.out.printf("Error removing inbound rule: %s\n", e.getMessage());
+		}
+	}
 }
 	
