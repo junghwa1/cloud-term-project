@@ -289,6 +289,16 @@ public class awsTest {
 
 	}
 
+	private static void handleAmazonException(AmazonServiceException e) {
+		System.out.printf("Error: %s, Status Code: %d, AWS Error Code: %s, Request ID: %s\n",
+				e.getMessage(), e.getStatusCode(), e.getErrorCode(), e.getRequestId());
+	}
+
+	private static void handleException(Exception e) {
+		System.out.printf("Exception: %s\n", e.getMessage());
+	}
+
+
 	public static void listInstances() {
 
 		System.out.println("Listing instances....");
@@ -354,11 +364,10 @@ public class awsTest {
 			System.out.println("You have access to " + availabilityZonesResult.getAvailabilityZones().size() +
 					" Availability Zones.");
 
-		} catch (AmazonServiceException ase) {
-			System.out.println("Caught Exception: " + ase.getMessage());
-			System.out.println("Reponse Status Code: " + ase.getStatusCode());
-			System.out.println("Error Code: " + ase.getErrorCode());
-			System.out.println("Request ID: " + ase.getRequestId());
+		} catch (AmazonServiceException e) {
+			handleAmazonException(e);
+		} catch (Exception e) {
+			handleException(e);
 		}
 
 	}
@@ -421,9 +430,10 @@ public class awsTest {
 			ec2.stopInstances(request);
 			System.out.printf("Successfully stop instance %s\n", instance_id);
 
-		} catch(Exception e)
-		{
-			System.out.println("Exception: "+e.toString());
+		} catch (AmazonServiceException e) {
+			handleAmazonException(e);
+		} catch (Exception e) {
+			handleException(e);
 		}
 
 	}
@@ -454,9 +464,9 @@ public class awsTest {
 
 			System.out.printf("Instance %s tagged with Name: %s\n", instanceId, instanceName);
 		} catch (AmazonServiceException e) {
-			System.out.printf("AmazonServiceException: %s\n", e.getMessage());
+			handleAmazonException(e);
 		} catch (Exception e) {
-			System.out.printf("Exception: %s\n", e.getMessage());
+			handleException(e);
 		}
 	}
 
@@ -476,9 +486,10 @@ public class awsTest {
 			System.out.printf(
 					"Successfully rebooted instance %s", instance_id);
 
-		} catch(Exception e)
-		{
-			System.out.println("Exception: "+e.toString());
+		} catch (AmazonServiceException e) {
+			handleAmazonException(e);
+		} catch (Exception e) {
+			handleException(e);
 		}
 
 
@@ -500,9 +511,9 @@ public class awsTest {
 						stateChange.getCurrentState().getName());
 			}
 		} catch (AmazonServiceException e) {
-			System.out.printf("Error terminating instance: %s\n", e.getMessage());
+			handleAmazonException(e);
 		} catch (Exception e) {
-			System.out.printf("Exception: %s\n", e.getMessage());
+			handleException(e);
 		}
 	}
 
@@ -559,8 +570,10 @@ public class awsTest {
 			} else {
 				System.out.printf("Error while checking HTCondor status for instance %s. Exit code: %d\n", instance_id, exitCode);
 			}
+		} catch (AmazonServiceException e) {
+			handleAmazonException(e);
 		} catch (Exception e) {
-			System.out.println("Exception occurred: " + e.getMessage());
+			handleException(e);
 		}
 	}
 
@@ -598,8 +611,8 @@ public class awsTest {
 					.withDimensions(new Dimension().withName("InstanceId").withValue(instance_id))
 					.withStatistics("Average")
 					.withPeriod(300) // 5분 간격
-					.withStartTime(Date.from(Instant.now().minus(Duration.ofMinutes(10)))) // Instant -> Date 변환
-					.withEndTime(Date.from(Instant.now())); // Instant -> Date 변환
+					.withStartTime(Date.from(Instant.now().minus(Duration.ofMinutes(10))))
+					.withEndTime(Date.from(Instant.now()));
 
 			GetMetricStatisticsResult response = cloudWatch.getMetricStatistics(request);
 
@@ -616,18 +629,18 @@ public class awsTest {
 			double cpuUtilization = latestData.getAverage();
 			System.out.printf("Current CPU utilization: %.2f%%\n", cpuUtilization);
 
-			// CPU 사용률이 임계값 초과 시 작업 수행
+			// CPU 사용률이 임계값 초과 시 정지
 			if (cpuUtilization > threshold) {
 				System.out.printf("CPU utilization %.2f%% exceeds threshold of %d%%. Taking action...\n", cpuUtilization, threshold);
-				stopInstance(instance_id); // 예: 인스턴스 정지
+				stopInstance(instance_id);
 			} else {
 				System.out.printf("CPU utilization %.2f%% is within acceptable range.\n", cpuUtilization);
 			}
 
 		} catch (AmazonServiceException e) {
-			System.out.printf("AmazonServiceException: %s\n", e.getMessage());
+			handleAmazonException(e);
 		} catch (Exception e) {
-			System.out.printf("Exception: %s\n", e.getMessage());
+			handleException(e);
 		}
 	}
 	public static void createSnapshot(String instance_id) {
@@ -662,9 +675,9 @@ public class awsTest {
 			// 스냅샷 결과 출력
 			System.out.printf("Snapshot created with ID: %s\n", snapshotResult.getSnapshot().getSnapshotId());
 		} catch (AmazonServiceException e) {
-			System.out.printf("AmazonServiceException: %s\n", e.getMessage());
+			handleAmazonException(e);
 		} catch (Exception e) {
-			System.out.printf("Exception: %s\n", e.getMessage());
+			handleException(e);
 		}
 	}
 
@@ -687,9 +700,9 @@ public class awsTest {
 				);
 			}
 		} catch (AmazonServiceException e) {
-			System.out.printf("Error retrieving snapshots: %s\n", e.getMessage());
+			handleAmazonException(e);
 		} catch (Exception e) {
-			System.out.printf("Exception: %s\n", e.getMessage());
+			handleException(e);
 		}
 	}
 
@@ -703,9 +716,9 @@ public class awsTest {
 
 			System.out.printf("Snapshot %s successfully deleted.\n", snapshotId);
 		} catch (AmazonServiceException e) {
-			System.out.printf("Error deleting snapshot: %s\n", e.getMessage());
+			handleAmazonException(e);
 		} catch (Exception e) {
-			System.out.printf("Exception: %s\n", e.getMessage());
+			handleException(e);
 		}
 	}
 
@@ -727,9 +740,9 @@ public class awsTest {
 			String newSnapshotId = copyResult.getSnapshotId();
 			System.out.printf("Snapshot successfully copied. New snapshot ID: %s\n", newSnapshotId);
 		} catch (AmazonServiceException e) {
-			System.out.printf("Error copying snapshot: %s\n", e.getMessage());
+			handleAmazonException(e);
 		} catch (Exception e) {
-			System.out.printf("Exception: %s\n", e.getMessage());
+			handleException(e);
 		}
 	}
 	public static void createSecurityGroup(String groupName, String description) {
@@ -742,7 +755,9 @@ public class awsTest {
 
 			System.out.printf("Security group created with ID: %s\n", result.getGroupId());
 		} catch (AmazonServiceException e) {
-			System.out.printf("Error creating security group: %s\n", e.getMessage());
+			handleAmazonException(e);
+		} catch (Exception e) {
+			handleException(e);
 		}
 	}
 	public static void listSecurityGroups() {
@@ -758,7 +773,9 @@ public class awsTest {
 						group.getVpcId());
 			}
 		} catch (AmazonServiceException e) {
-			System.out.printf("Error listing security groups: %s\n", e.getMessage());
+			handleAmazonException(e);
+		} catch (Exception e) {
+			handleException(e);
 		}
 	}
 	public static void deleteSecurityGroup(String groupId) {
@@ -770,7 +787,9 @@ public class awsTest {
 
 			System.out.printf("Security group %s successfully deleted.\n", groupId);
 		} catch (AmazonServiceException e) {
-			System.out.printf("Error deleting security group: %s\n", e.getMessage());
+			handleAmazonException(e);
+		} catch (Exception e) {
+			handleException(e);
 		}
 	}
 	public static void addInboundRule(String groupId, String protocol, int port, String cidr) {
@@ -780,7 +799,7 @@ public class awsTest {
 					.withIpProtocol(protocol)
 					.withFromPort(port)
 					.withToPort(port)
-					.withIpv4Ranges(new IpRange().withCidrIp(cidr)); // 최신 AWS SDK에서 지원되는 방식
+					.withIpv4Ranges(new IpRange().withCidrIp(cidr));
 
 
 			AuthorizeSecurityGroupIngressRequest request = new AuthorizeSecurityGroupIngressRequest()
@@ -790,7 +809,9 @@ public class awsTest {
 			ec2.authorizeSecurityGroupIngress(request);
 			System.out.printf("Inbound rule added: protocol=%s, port=%d, cidr=%s\n", protocol, port, cidr);
 		} catch (AmazonServiceException e) {
-			System.out.printf("Error adding inbound rule: %s\n", e.getMessage());
+			handleAmazonException(e);
+		} catch (Exception e) {
+			handleException(e);
 		}
 	}
 	public static void removeInboundRule(String groupId, String protocol, int port, String cidr) {
@@ -800,7 +821,7 @@ public class awsTest {
 					.withIpProtocol(protocol)
 					.withFromPort(port)
 					.withToPort(port)
-					.withIpv4Ranges(new IpRange().withCidrIp(cidr)); // 최신 AWS SDK에서 지원되는 방식
+					.withIpv4Ranges(new IpRange().withCidrIp(cidr));
 
 			RevokeSecurityGroupIngressRequest request = new RevokeSecurityGroupIngressRequest()
 					.withGroupId(groupId)
@@ -809,7 +830,9 @@ public class awsTest {
 			ec2.revokeSecurityGroupIngress(request);
 			System.out.printf("Inbound rule removed: protocol=%s, port=%d, cidr=%s\n", protocol, port, cidr);
 		} catch (AmazonServiceException e) {
-			System.out.printf("Error removing inbound rule: %s\n", e.getMessage());
+			handleAmazonException(e);
+		} catch (Exception e) {
+			handleException(e);
 		}
 	}
 }
